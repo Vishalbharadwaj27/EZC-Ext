@@ -7,20 +7,59 @@
     "vscode": "^1.103.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Machine Learning",
+    "Education"
   ],
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "ez-coder.helloWorld",
-      "title": "Hello World"
-    }]
+    "commands": [
+      {
+        "command": "ez-coder.openAIChat",
+        "title": "EZ-Coder: Open AI Chat"
+      },
+      {
+        "command": "ez-coder.completeCode",
+        "title": "EZ-Coder: Complete My Code"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ez-coder",
+          "title": "EZ-Coder",
+          "icon": "resources/ez-coder.svg"
+        }
+      ]
+    },
+    "views": {
+      "ez-coder": [
+        {
+          "id": "ez-coder.chatView",
+          "name": "AI Chat",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "EZ-Coder",
+      "properties": {
+        "ez-coder.openRouterApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenRouter API Key for AI functionality"
+        }
+      }
+    }
   },
   "scripts": {
     "lint": "eslint .",
     "pretest": "npm run lint",
     "test": "vscode-test"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
   },
   "devDependencies": {
     "@types/vscode": "^1.103.0",
@@ -29,5 +68,6 @@
     "eslint": "^9.34.0",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2"
-  }
+  },
+  "type": "module"
 }

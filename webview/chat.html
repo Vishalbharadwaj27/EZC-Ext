@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EZ-Coder Chat</title>
+    <link rel="stylesheet" href="{{cssPath}}">
+</head>
+<body>
+    <div class="chat-container">
+        <div id="apiKeySection" class="api-key-section">
+            <input type="password" id="apiKeyInput" placeholder="Enter your OpenRouter API key" />
+            <button id="saveApiKey">Save API Key</button>
+        </div>
+        <div id="messages" class="messages"></div>
+        <div class="input-container">
+            <textarea id="userInput" placeholder="Ask me anything..." rows="3"></textarea>
+            <button id="sendMessage">Send</button>
+        </div>
+    </div>
+    <script src="{{jsPath}}"></script>
+</body>
+</html>
