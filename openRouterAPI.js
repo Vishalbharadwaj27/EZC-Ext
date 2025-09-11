@@ -1,4 +1,4 @@
-// We will dynamically import node-fetch inside the async function where it's used.
+const fetch = require('node-fetch');
 
 class OpenRouterAPI {
     /**
@@ -10,9 +10,6 @@ class OpenRouterAPI {
     }
 
     async chat(messages) {
-        // Dynamically import node-fetch here
-        const { default: fetch } = await import('node-fetch');
-
         try {
             const response = await fetch(`${this.baseUrl}/chat/completions`, {
                 method: 'POST',
