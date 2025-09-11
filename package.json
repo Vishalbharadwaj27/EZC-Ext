@@ -11,14 +11,13 @@
     "Machine Learning",
     "Education"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:ez-coder.chatView",
+    "onCommand:ez-coder.completeCode"
+  ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "ez-coder.openAIChat",
-        "title": "EZ-Coder: Open AI Chat"
-      },
       {
         "command": "ez-coder.completeCode",
         "title": "EZ-Coder: Complete My Code"

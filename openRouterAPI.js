@@ -5,7 +5,11 @@ class OpenRouterAPI {
      * @param {string} apiKey 
      */
     constructor(apiKey) {
-        this.apiKey = apiKey;
+        // Paste your API key here. 
+
+        const hardcodedApiKey = "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";
+
+        this.apiKey = apiKey || hardcodedApiKey;
         this.baseUrl = 'https://openrouter.ai/api/v1';
     }
 
@@ -16,17 +20,16 @@ class OpenRouterAPI {
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
-                    // It's good practice to identify your app in the referer header
-                    'HTTP-Referer': 'https://github.com/Vishalbharadwaj27/EZC-Ext'
+                    'HTTP-Referer': 'https://github.com/Vishalbharadwaj27/EZC-Ext' // Replace with your app's URL
                 },
                 body: JSON.stringify({
-                    model: 'openai/gpt-4', // or any other model you prefer
-                    messages: messages
+                    model: 'mistralai/mistral-7b-instruct', // Using a reliable free model
+                    messages: messages,
+                    max_tokens: 1024 // Added to prevent long responses and potential credit issues
                 })
             });
 
             if (!response.ok) {
-                // It's helpful to log the response body for more detailed error info
                 const errorBody = await response.text();
                 throw new Error(`API request failed: ${response.statusText}. Body: ${errorBody}`);
             }
@@ -40,7 +43,6 @@ class OpenRouterAPI {
             }
         } catch (error) {
             console.error('OpenRouter API Error:', error);
-            // Re-throwing the error so the calling function can handle it
             throw error;
         }
     }
