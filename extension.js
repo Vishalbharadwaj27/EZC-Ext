@@ -8,10 +8,11 @@ let openRouterAPI = undefined;
 function activate(context) {
     console.log('EZ-Coder extension is now active!');
 
-    const config = vscode.workspace.getConfiguration('ez-coder');
-    const apiKey = config.get('openRouterApiKey');
-    if (apiKey) {
-        openRouterAPI = new OpenRouterAPI(apiKey);
+    try {
+        openRouterAPI = new OpenRouterAPI();
+    } catch (error) {
+        openRouterAPI = undefined;
+        vscode.window.showErrorMessage(`Failed to initialize OpenRouter API: ${error.message}`);
     }
 
     const chatProvider = new ChatViewProvider(context.extensionUri, context);
@@ -26,7 +27,7 @@ function activate(context) {
         }
 
         if (!openRouterAPI) {
-            vscode.window.showErrorMessage('Please set your OpenRouter API key first!');
+            vscode.window.showErrorMessage('API key not found. Please set your OpenRouter API key in the VS Code settings for EZ-Coder.');
             return;
         }
 
@@ -55,11 +56,30 @@ function activate(context) {
                 }
             });
         } catch (error) {
-            vscode.window.showErrorMessage('Failed to complete code: ' + error.message);
+            if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+                vscode.window.showErrorMessage('Authentication Error: Invalid API Key.');
+            } else {
+                vscode.window.showErrorMessage('Failed to complete code: ' + error.message);
+            }
         }
     });
 
     context.subscriptions.push(completeCodeCommand);
+
+    let verifyApiKeyCommand = vscode.commands.registerCommand('ez-coder.verifyApiKey', async () => {
+        const tempAPI = new OpenRouterAPI();
+        const result = await tempAPI.testConnection();
+
+        if (result.success) {
+            vscode.window.showInformationMessage('Success! Your OpenRouter API key is valid.');
+        } else if (result.statusCode === 401) {
+            vscode.window.showErrorMessage('Verification Failed: The API key is invalid or unauthorized. Please check your key and try again.');
+        } else {
+            vscode.window.showErrorMessage(`Verification Failed: Could not connect to OpenRouter. (Status Code: ${result.statusCode})`);
+        }
+    });
+
+    context.subscriptions.push(verifyApiKeyCommand);
 }
 
 class ChatViewProvider {
@@ -88,86 +108,104 @@ class ChatViewProvider {
 
         webviewView.webview.onDidReceiveMessage(async message => {
             switch (message.command) {
-                case 'saveApiKey':
-                    await vscode.workspace.getConfiguration('ez-coder').update('openRouterApiKey', message.apiKey, true);
-                    openRouterAPI = new OpenRouterAPI(message.apiKey);
-                    vscode.window.showInformationMessage('API key saved successfully!');
-                    break;
-
                 case 'sendMessage':
                     if (!openRouterAPI) {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: 'Please set your OpenRouter API key first!',
-                            isUser: false
-                        });
+                        this._view.webview.postMessage({ command: 'showAuthError' });
                         return;
                     }
 
-                    try {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: message.text,
-                            isUser: true
-                        });
+                    this._view.webview.postMessage({
+                        command: 'addMessage',
+                        text: message.text,
+                        isUser: true
+                    });
 
-                        const systemPrompt = `You are an expert Computer Science educator. Your goal is to explain complex programming concepts in a clear, block-wise, and beginner-friendly way. Follow these rules:
+                    if (message.action === 'pseudocode') {
+                        try {
+                            const systemPrompt = `You are an expert code generation bot. Your only function is to write clean and clear pseudocode for a given concept. Do not use any specific programming language syntax.`;
 
-1. Start with a high-level, one-sentence summary of the concept.
-2. Explain in logical blocks, not line-by-line. Group related functionality and explain the purpose of each block.
-3. Use simple language and helpful analogies where appropriate.
-4. After your explanation, include action buttons using these exact tags:
-   [BUTTONS]
-   - [Generate Pseudocode]
-   - [Generate Code]
-   [/BUTTONS]
+                            const apiResponse = await openRouterAPI.chat([
+                                {
+                                    role: 'system',
+                                    content: systemPrompt
+                                },
+                                {
+                                    role: 'user',
+                                    content: `Generate pseudocode for "${message.text}".`
+                                }
+                            ]);
 
-Wrap your entire response in [EXPLANATION]...[/EXPLANATION] tags. Do not include actual code or pseudocode in the explanation.`;
-
-                        const apiResponse = await openRouterAPI.chat([
-                            {
-                                role: 'system',
-                                content: systemPrompt
-                            },
-                            {
-                                role: 'user',
-                                content: message.text
-                            }
-                        ]);
-
-                        const explanationMatch = apiResponse.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
-
-                        if (explanationMatch) {
-                            const explanation = explanationMatch[1].trim();
                             this._view.webview.postMessage({
-                                command: 'addExplanation',
-                                explanation: explanation,
-                                originalQuery: message.text,
-                                isUser: false
+                                command: 'addCode',
+                                code: apiResponse,
                             });
-                        } else {
+
+                        } catch (error) {
                             this._view.webview.postMessage({
                                 command: 'addMessage',
-                                text: apiResponse,
+                                text: 'Error: ' + error.message,
                                 isUser: false
                             });
                         }
-                    } catch (error) {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: 'Error: ' + error.message,
-                            isUser: false
-                        });
+                    } else {
+                        try {
+                            let systemPrompt;
+                            if (message.action === 'explain') {
+                                systemPrompt = `You are an expert Computer Science educator. Your goal is to explain complex programming concepts in a clear, well-structured, and beginner-friendly way. Follow these rules:\n1. Start with a high-level summary paragraph\n2. Use bullet points or numbered lists to break down key steps or components\n3. Group related concepts together\n4. Use simple language and helpful analogies\n5. Format the output to be easy to read with proper spacing and structure\n\nYour response should be ONLY the explanation, without any code examples or additional suggestions.`;
+                            } else {
+                                // Default flow - Explanation with follow-up buttons
+                                systemPrompt = `You are an expert Computer Science educator. Explain the concept clearly and concisely. Rules:\n1. Start with a high-level summary\n2. Break down the explanation into logical blocks\n3. Use simple language and analogies where helpful\n4. Format for readability with proper spacing\n\nWrap your response in [EXPLANATION]...[/EXPLANATION] tags.\nAfter the explanation, the UI will automatically show options to generate pseudocode or code examples.`;
+                            }
+
+                            const apiResponse = await openRouterAPI.chat([
+                                {
+                                    role: 'system',
+                                    content: systemPrompt
+                                },
+                                {
+                                    role: 'user',
+                                    content: message.text
+                                }
+                            ]);
+
+                            let responseType = message.action || 'explain';
+                            let responseMatch;
+
+                            if (responseType === 'explain') {
+                                responseMatch = apiResponse.match(/ \[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+                                if (responseMatch) {
+                                    this._view.webview.postMessage({
+                                        command: 'addExplanation',
+                                        explanation: responseMatch[1].trim(),
+                                        originalQuery: message.text,
+                                        isUser: false,
+                                        showActions: responseType === 'explain'
+                                    });
+                                }
+                            }
+
+                            if (!responseMatch) {
+                                this._view.webview.postMessage({
+                                    command: 'addMessage',
+                                    text: apiResponse,
+                                    isUser: false
+                                });
+                            }
+                        } catch (error) {
+                            if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+                                this._view.webview.postMessage({
+                                    command: 'showAuthError'
+                                });
+                            } else {
+                                vscode.window.showErrorMessage('Failed to get response: ' + error.message);
+                            }
+                        }
                     }
                     break;
 
                 case 'generatePseudocode':
                     if (!openRouterAPI) {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: 'Please set your OpenRouter API key first!',
-                            isUser: false
-                        });
+                        this._view.webview.postMessage({ command: 'showAuthError' });
                         return;
                     }
 
@@ -191,21 +229,19 @@ Wrap your entire response in [EXPLANATION]...[/EXPLANATION] tags. Do not include
                         });
 
                     } catch (error) {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: 'Error: ' + error.message,
-                            isUser: false
-                        });
+                        if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+                            this._view.webview.postMessage({
+                                command: 'showAuthError'
+                            });
+                        } else {
+                            vscode.window.showErrorMessage('Failed to get pseudocode: ' + error.message);
+                        }
                     }
                     break;
 
                 case 'generateCode':
                     if (!openRouterAPI) {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: 'Please set your OpenRouter API key first!',
-                            isUser: false
-                        });
+                        this._view.webview.postMessage({ command: 'showAuthError' });
                         return;
                     }
 
@@ -229,12 +265,18 @@ Wrap your entire response in [EXPLANATION]...[/EXPLANATION] tags. Do not include
                         });
 
                     } catch (error) {
-                        this._view.webview.postMessage({
-                            command: 'addMessage',
-                            text: 'Error: ' + error.message,
-                            isUser: false
-                        });
+                        if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+                            this._view.webview.postMessage({
+                                command: 'showAuthError'
+                            });
+                        } else {
+                            vscode.window.showErrorMessage('Failed to get code: ' + error.message);
+                        }
                     }
+                    break;
+                
+                case 'runVerification':
+                    vscode.commands.executeCommand('ez-coder.verifyApiKey');
                     break;
             }
         });

@@ -21,6 +21,10 @@
       {
         "command": "ez-coder.completeCode",
         "title": "EZ-Coder: Complete My Code"
+      },
+      {
+        "command": "ez-coder.verifyApiKey",
+        "title": "EZ-Coder: Verify OpenRouter API Key"
       }
     ],
     "viewsContainers": {
@@ -47,7 +51,7 @@
         "ez-coder.openRouterApiKey": {
           "type": "string",
           "default": "",
-          "description": "OpenRouter API Key for AI functionality"
+          "description": "Your personal OpenRouter API Key. This is required for all AI features to work."
         }
       }
     }

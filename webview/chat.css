@@ -17,22 +17,6 @@ body {
     padding: 1rem;
 }
 
-.api-key-section {
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background-color: var(--vscode-editor-inactiveSelectionBackground);
-    border-radius: 4px;
-}
-
-.api-key-section input {
-    width: 300px;
-    padding: 0.5rem;
-    margin-right: 0.5rem;
-    border: 1px solid var(--vscode-input-border);
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-}
-
 .messages {
     flex-grow: 1;
     overflow-y: auto;

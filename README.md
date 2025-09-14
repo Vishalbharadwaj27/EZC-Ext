@@ -2,6 +2,20 @@
 
 This is the README for your extension "ez-coder". After writing up a brief description, we recommend including the following sections.
 
+## Setup Requirements
+
+This extension requires a personal API key from [OpenRouter.ai](https://openrouter.ai/) to function.
+
+1.  **Get your API Key**: Go to your OpenRouter account settings and create a new API key.
+2.  **Set the API Key in VS Code**:
+    * Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac) to open the Command Palette.
+    * Type "Preferences: Open User Settings (JSON)" and select it.
+    * Add the following line to your `settings.json` file, replacing `"YOUR_API_KEY_HERE"` with your actual key:
+        ```json
+        "ez-coder.openRouterApiKey": "YOUR_API_KEY_HERE"
+        ```
+3.  **Save** the settings file. The extension is now ready to use.
+
 ## Features
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.

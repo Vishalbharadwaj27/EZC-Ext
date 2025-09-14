@@ -1,27 +1,44 @@
 const fetch = require('node-fetch');
 
 class OpenRouterAPI {
-    /**
-     * @param {string} apiKey 
-     */
-    constructor(apiKey) {
-        if (!apiKey) {
-            // This error will be caught by the calling function and displayed to the user.
-            // This is better than silently failing or using a potentially undefined key.
-            throw new Error('API key is required.');
-        }
-        this.apiKey = apiKey;
+    constructor() {
+        this.apiKey = "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";
         this.baseUrl = 'https://openrouter.ai/api/v1';
+    }
+
+    async testConnection() {
+        try {
+            const response = await fetch('https://openrouter.ai/api/v1/models', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'HTTP-Referer': 'https://github.com/Vishalbharadwaj27/EZC-Ext'
+                }
+            });
+
+            if (response.ok) { // response.ok is true for statuses in the range 200-299
+                return { success: true, statusCode: response.status };
+            } else {
+                return { success: false, statusCode: response.status };
+            }
+        } catch (error) {
+            console.error('API connection test failed:', error);
+            return { success: false, error: error.message };
+        }
     }
 
     async chat(messages) {
         try {
+            console.log('Preparing to send API request...');
+            console.log('Using API Key:', this.apiKey ? `sk-or-...${this.apiKey.slice(-4)}` : 'API Key is missing or invalid!');
             const response = await fetch(`${this.baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://github.com/Vishalbharadwaj27/EZC-Ext' // Replace with your app's URL
+                    // IMPORTANT: Replace this with your actual extension's website or GitHub repository URL.
+                    // This is required by the OpenRouter API.
+                    'HTTP-Referer': 'https://github.com/Vishalbharadwaj27/EZC-Ext'
                 },
                 body: JSON.stringify({
                     model: 'mistralai/mistral-7b-instruct', // Using a reliable free model
