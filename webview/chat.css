@@ -59,7 +59,14 @@ body {
 
 .input-container {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
+}
+
+.button-container {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
 }
 
 textarea {
@@ -69,9 +76,10 @@ textarea {
     background-color: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     resize: none;
+    border-radius: 4px;
 }
 
-button {
+#sendButton {
     padding: 0.5rem 1rem;
     background-color: var(--vscode-button-background);
     color: var(--vscode-button-foreground);
@@ -80,8 +88,43 @@ button {
     cursor: pointer;
 }
 
-button:hover {
+#sendButton:hover {
     background-color: var(--vscode-button-hoverBackground);
+}
+
+.action-btn, .lang-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0.25rem;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.action-btn:hover, .lang-btn:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.lang-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 4px;
+}
+
+.explanation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-top: 1px solid var(--vscode-input-border);
 }
 
 pre {
@@ -89,8 +132,31 @@ pre {
     padding: 1rem;
     border-radius: 4px;
     overflow-x: auto;
+    margin-top: 1rem;
 }
 
 code {
     font-family: var(--vscode-editor-font-family);
+    white-space: pre-wrap;
+}
+
+.explanation {
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.message.ai-message .explanation {
+    padding: 0.5rem;
+    background-color: var(--vscode-editor-background);
+    border-radius: 4px;
+}
+
+.persistent-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    border-radius: 4px;
+    justify-content: center;
 }

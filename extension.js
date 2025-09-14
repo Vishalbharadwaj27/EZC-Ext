@@ -42,10 +42,10 @@ function activate(context) {
             const selection = editor.selection;
             const text = document.getText();
 
-            const response = await openRouterAPI.completeCode(text, prompt);
+            const apiResponse = await openRouterAPI.completeCode(text, prompt);
             
-            const codeMatch = response.match(/```(?:\\w+)?\n([\s\S]+?)```/);
-            const codeToInsert = codeMatch ? codeMatch[1] : response;
+            const codeMatch = apiResponse.match(/```(?:\\w+)?\n([\s\S]+?)```/);
+            const codeToInsert = codeMatch ? codeMatch[1] : apiResponse;
 
             editor.edit(editBuilder => {
                 if (selection.isEmpty) {
@@ -111,10 +111,23 @@ class ChatViewProvider {
                             isUser: true
                         });
 
-                        const response = await openRouterAPI.chat([
+                        const systemPrompt = `You are an expert Computer Science educator. Your goal is to explain complex programming concepts in a clear, block-wise, and beginner-friendly way. Follow these rules:
+
+1. Start with a high-level, one-sentence summary of the concept.
+2. Explain in logical blocks, not line-by-line. Group related functionality and explain the purpose of each block.
+3. Use simple language and helpful analogies where appropriate.
+4. After your explanation, include action buttons using these exact tags:
+   [BUTTONS]
+   - [Generate Pseudocode]
+   - [Generate Code]
+   [/BUTTONS]
+
+Wrap your entire response in [EXPLANATION]...[/EXPLANATION] tags. Do not include actual code or pseudocode in the explanation.`;
+
+                        const apiResponse = await openRouterAPI.chat([
                             {
                                 role: 'system',
-                                content: 'You are a helpful coding assistant, focused on helping beginners learn to code. Provide clear, detailed explanations and examples.'
+                                content: systemPrompt
                             },
                             {
                                 role: 'user',
@@ -122,11 +135,99 @@ class ChatViewProvider {
                             }
                         ]);
 
+                        const explanationMatch = apiResponse.match(/\[EXPLANATION\]([\s\S]*?)\[\/EXPLANATION\]/);
+
+                        if (explanationMatch) {
+                            const explanation = explanationMatch[1].trim();
+                            this._view.webview.postMessage({
+                                command: 'addExplanation',
+                                explanation: explanation,
+                                originalQuery: message.text,
+                                isUser: false
+                            });
+                        } else {
+                            this._view.webview.postMessage({
+                                command: 'addMessage',
+                                text: apiResponse,
+                                isUser: false
+                            });
+                        }
+                    } catch (error) {
                         this._view.webview.postMessage({
                             command: 'addMessage',
-                            text: response,
+                            text: 'Error: ' + error.message,
                             isUser: false
                         });
+                    }
+                    break;
+
+                case 'generatePseudocode':
+                    if (!openRouterAPI) {
+                        this._view.webview.postMessage({
+                            command: 'addMessage',
+                            text: 'Please set your OpenRouter API key first!',
+                            isUser: false
+                        });
+                        return;
+                    }
+
+                    try {
+                        const systemPrompt = `You are an expert code generation bot. Your only function is to write clean and clear pseudocode for a given concept. Do not use any specific programming language syntax.`;
+
+                        const apiResponse = await openRouterAPI.chat([
+                            {
+                                role: 'system',
+                                content: systemPrompt
+                            },
+                            {
+                                role: 'user',
+                                content: `Generate pseudocode for "${message.concept}".`
+                            }
+                        ]);
+
+                        this._view.webview.postMessage({
+                            command: 'addCode', // Re-using addCode to display the pseudocode
+                            code: apiResponse,
+                        });
+
+                    } catch (error) {
+                        this._view.webview.postMessage({
+                            command: 'addMessage',
+                            text: 'Error: ' + error.message,
+                            isUser: false
+                        });
+                    }
+                    break;
+
+                case 'generateCode':
+                    if (!openRouterAPI) {
+                        this._view.webview.postMessage({
+                            command: 'addMessage',
+                            text: 'Please set your OpenRouter API key first!',
+                            isUser: false
+                        });
+                        return;
+                    }
+
+                    try {
+                        const systemPrompt = `You are an expert code generation bot. Your only function is to write clean, complete, and runnable code for a given concept in a specified language. Your entire response must be ONLY the raw code. Do not use markdown fences or add any explanations.`;
+
+                        const apiResponse = await openRouterAPI.chat([
+                            {
+                                role: 'system',
+                                content: systemPrompt
+                            },
+                            {
+                                role: 'user',
+                                content: `Generate a code example for "${message.concept}" in ${message.language}.`
+                            }
+                        ]);
+
+                        this._view.webview.postMessage({
+                            command: 'addCode',
+                            code: apiResponse,
+                        });
+
                     } catch (error) {
                         this._view.webview.postMessage({
                             command: 'addMessage',

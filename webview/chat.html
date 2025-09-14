@@ -14,10 +14,36 @@
         </div>
         <div id="messages" class="messages"></div>
         <div class="input-container">
-            <textarea id="userInput" placeholder="Ask me anything..." rows="3"></textarea>
-            <button id="sendMessage">Send</button>
+            <textarea id="userInput" placeholder="Ask me anything..." rows="1"></textarea>
+            <div class="action-buttons">
+                <button id="explainButton" class="action-btn">Explain</button>
+                <button id="pseudocodeButton" class="action-btn">Pseudocode</button>
+                <button id="codeButton" class="action-btn">Code</button>
+                <button id="sendButton">Send</button>
+            </div>
         </div>
     </div>
+
+    <template id="code-example-template">
+        <button class="generate-code-btn">Generate Code Example</button>
+    </template>
+
+    <template id="action-buttons-template">
+        <div class="explanation-actions">
+            <button class="action-btn" data-action="pseudocode">Generate Pseudocode</button>
+            <button class="action-btn" data-action="code">Generate Code</button>
+        </div>
+    </template>
+
+    <template id="lang-buttons-template">
+        <div class="lang-buttons">
+            <button class="lang-btn" data-lang="Python">Python</button>
+            <button class="lang-btn" data-lang="JavaScript">JavaScript</button>
+            <button class="lang-btn" data-lang="Java">Java</button>
+        </div>
+    </template>
+    </div>
+
     <script src="{{jsPath}}"></script>
 </body>
 </html>

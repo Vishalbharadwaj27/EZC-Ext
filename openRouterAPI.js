@@ -5,11 +5,12 @@ class OpenRouterAPI {
      * @param {string} apiKey 
      */
     constructor(apiKey) {
-        // Paste your API key here. 
-
-        const hardcodedApiKey = "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";
-
-        this.apiKey = apiKey || hardcodedApiKey;
+        if (!apiKey) {
+            // This error will be caught by the calling function and displayed to the user.
+            // This is better than silently failing or using a potentially undefined key.
+            throw new Error('API key is required.');
+        }
+        this.apiKey = apiKey;
         this.baseUrl = 'https://openrouter.ai/api/v1';
     }
 
