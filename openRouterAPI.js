@@ -1,8 +1,8 @@
 const fetch = require('node-fetch');
 
 class OpenRouterAPI {
-    constructor() {
-        this.apiKey = "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";
+    constructor(apiKey) {
+        this.apiKey = apiKey;
         this.baseUrl = 'https://openrouter.ai/api/v1';
     }
 

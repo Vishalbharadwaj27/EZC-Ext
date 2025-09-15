@@ -70,6 +70,7 @@
     "eslint": "^9.34.0"
   },
   "dependencies": {
+    "dotenv": "^17.2.2",
     "node-fetch": "^2.7.0"
   }
 }

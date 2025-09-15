@@ -1,19 +1,37 @@
 const vscode = require('vscode');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const OpenRouterAPI = require('./openRouterAPI');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-let openRouterAPI = undefined;
+let openRouterAPI;
+
+function getApiKey() {
+    // First try to get from VS Code settings
+    const config = vscode.workspace.getConfiguration('ez-coder');
+    let apiKey = config.get('openRouterApiKey');
+    
+    // If not in settings, try environment variable
+    if (!apiKey) {
+        apiKey = process.env.OPENROUTER_API_KEY;
+    }
+    
+    return apiKey;
+}
 
 function activate(context) {
     console.log('EZ-Coder extension is now active!');
+    
+    // Get API key
+    const apiKey = getApiKey();
 
-    try {
-        openRouterAPI = new OpenRouterAPI();
-    } catch (error) {
-        openRouterAPI = undefined;
-        vscode.window.showErrorMessage(`Failed to initialize OpenRouter API: ${error.message}`);
+    if (!apiKey) {
+        vscode.window.showErrorMessage('EZ-Coder: OpenRouter API key is not configured. Please set your API key in VS Code settings or in a .env file.');
+        return;
     }
+
+    // If the key is valid, initialize the API
+    openRouterAPI = new OpenRouterAPI(apiKey);
 
     const chatProvider = new ChatViewProvider(context.extensionUri, context);
     context.subscriptions.push(
@@ -94,7 +112,7 @@ class ChatViewProvider {
         this._context = context;
     }
 
-    resolveWebviewView(webviewView, context, token) {
+    resolveWebviewView(webviewView) {
         this._view = webviewView;
 
         webviewView.webview.options = {
