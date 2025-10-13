@@ -24,7 +24,7 @@
       },
       {
         "command": "ez-coder.verifyApiKey",
-        "title": "EZ-Coder: Verify OpenRouter API Key"
+        "title": "EZ-Coder: Verify Hugging Face API Key"
       }
     ],
     "viewsContainers": {
@@ -48,10 +48,10 @@
     "configuration": {
       "title": "EZ-Coder",
       "properties": {
-        "ez-coder.openRouterApiKey": {
+        "ez-coder.huggingFaceApiKey": {
           "type": "string",
           "default": "",
-          "description": "Your personal OpenRouter API Key. This is required for all AI features to work."
+          "description": "Your personal Hugging Face API Key for your fine-tuned model."
         }
       }
     }
