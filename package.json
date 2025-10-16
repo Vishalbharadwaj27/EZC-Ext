@@ -51,7 +51,7 @@
         "ez-coder.huggingFaceApiKey": {
           "type": "string",
           "default": "",
-          "description": "Your personal Hugging Face API Key for your fine-tuned model."
+          "description": "Your personal Hugging Face API Key."
         }
       }
     }
