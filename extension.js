@@ -27,7 +27,7 @@ function activate(context) {
     // Get API key
     const apiKey = getApiKey();
     // *** IMPORTANT: Replace with your Hugging Face username and model name ***
-    const modelId = "VishalBharadwaj/EZCoder"; 
+    const modelId = "VishalBharadwaj/EZCoder";
 
     if (!apiKey) {
         vscode.window.showErrorMessage('EZ-Coder: Hugging Face API key is not configured. Please set your API key in VS Code settings or in a .env file.');
