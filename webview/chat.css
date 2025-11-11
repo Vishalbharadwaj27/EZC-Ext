@@ -29,6 +29,7 @@ body {
     margin-bottom: 1rem;
     padding: 0.5rem;
     border-radius: 4px;
+    position: relative;
 }
 
 .user-message {
@@ -39,6 +40,13 @@ body {
 .ai-message {
     background-color: var(--vscode-editor-inactiveSelectionBackground);
     margin-right: 2rem;
+}
+
+.thinking {
+    background-color: var(--vscode-editor-inactiveSelectionBackground);
+    margin-right: 2rem;
+    font-style: italic;
+    transition: opacity 0.5s;
 }
 
 .input-container {
@@ -63,7 +71,7 @@ textarea {
     border-radius: 4px;
 }
 
-#sendButton {
+#sendButton, #clearButton {
     padding: 0.5rem 1rem;
     background-color: var(--vscode-button-background);
     color: var(--vscode-button-foreground);
@@ -72,7 +80,7 @@ textarea {
     cursor: pointer;
 }
 
-#sendButton:hover {
+#sendButton:hover, #clearButton:hover {
     background-color: var(--vscode-button-hoverBackground);
 }
 
@@ -117,11 +125,15 @@ pre {
     border-radius: 4px;
     overflow-x: auto;
     margin-top: 1rem;
+    border: 1px solid var(--vscode-input-border);
 }
 
 code {
     font-family: var(--vscode-editor-font-family);
     white-space: pre-wrap;
+    background-color: var(--vscode-textCodeBlock-background);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
 }
 
 .explanation {
@@ -143,4 +155,20 @@ code {
     background-color: var(--vscode-editor-inactiveSelectionBackground);
     border-radius: 4px;
     justify-content: center;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.copy-btn:hover {
+    background-color: var(--vscode-button-hoverBackground);
 }

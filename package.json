@@ -1,8 +1,8 @@
 {
   "name": "ez-coder",
   "displayName": "EZ-Coder",
-  "description": "An all-in-one assistant with an AI agent, code visualizer, and study roadmaps.",
-  "version": "0.0.1",
+  "description": "An all-in-one AI assistant for coding and learning",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.103.0"
   },
@@ -11,9 +11,19 @@
     "Machine Learning",
     "Education"
   ],
+  "keywords": [
+    "AI",
+    "Assistant",
+    "Code Generation",
+    "Pseudocode",
+    "Chatbot",
+    "Hugging Face",
+    "VS Code"
+  ],
   "activationEvents": [
     "onView:ez-coder.chatView",
-    "onCommand:ez-coder.completeCode"
+    "onCommand:ez-coder.completeCode",
+    "onCommand:ez-coder.clearChat"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -23,8 +33,8 @@
         "title": "EZ-Coder: Complete My Code"
       },
       {
-        "command": "ez-coder.verifyApiKey",
-        "title": "EZ-Coder: Verify Hugging Face API Key"
+        "command": "ez-coder.clearChat",
+        "title": "EZ-Coder: Clear Chat"
       }
     ],
     "viewsContainers": {

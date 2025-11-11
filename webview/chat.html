@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EZ-Coder Chat</title>
+    <title>EZCoder Chat</title>
     <link rel="stylesheet" href="{{cssPath}}">
 </head>
 <body>
     <div class="chat-container">
         <div id="messages" class="messages"></div>
+        <div id="thinking" class="thinking" style="display: none;">Thinking...</div>
         <div class="input-container">
             <textarea id="userInput" placeholder="Ask me anything..." rows="1"></textarea>
             <div class="action-buttons">
@@ -16,29 +17,20 @@
                 <button id="pseudocodeButton" class="action-btn">Pseudocode</button>
                 <button id="codeButton" class="action-btn">Code</button>
                 <button id="sendButton">Send</button>
+                <button id="clearButton">Clear Chat</button>
             </div>
         </div>
     </div>
-
-    <template id="code-example-template">
-        <button class="generate-code-btn">Generate Code Example</button>
-    </template>
-
-    <template id="action-buttons-template">
-        <div class="explanation-actions">
-            <button class="action-btn" data-action="pseudocode">Generate Pseudocode</button>
-            <button class="action-btn" data-action="code">Generate Code</button>
-        </div>
-    </template>
 
     <template id="lang-buttons-template">
         <div class="lang-buttons">
             <button class="lang-btn" data-lang="Python">Python</button>
             <button class="lang-btn" data-lang="JavaScript">JavaScript</button>
             <button class="lang-btn" data-lang="Java">Java</button>
+            <button class="lang-btn" data-lang="C++">C++</button>
+            <button class="lang-btn" data-lang="C#">C#</button>
         </div>
     </template>
-    </div>
 
     <script src="{{jsPath}}"></script>
 </body>

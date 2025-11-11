@@ -1,45 +1,47 @@
 const fetch = require('node-fetch');
 
+// This is the new URL for the serverless API
+const API_URL = "https://api-inference.huggingface.co/models/VishalBharadwaj/EZCoder-merged";
+
 class HuggingFaceAPI {
-    constructor(apiKey, model) {
+    constructor(apiKey) {
         this.apiKey = apiKey;
-        this.model = model; // This is still good to keep, even if not used in the URL
-        
-        // --- THIS IS THE UPDATED LINE ---
-        // It now points to your personal Hugging Face Space URL
-        this.baseUrl = `https://vishalbharadwaj-ezcoder-api.hf.space`;
-        // ---------------------------------
+        // The 'model' and 'baseUrl' parameters are no longer needed
     }
 
     async testConnection() {
         try {
-            // This will now send a GET request to your Space's "/" (health check) endpoint
-            const response = await fetch(this.baseUrl, {
-                method: 'GET',
+            const response = await fetch(API_URL, {
+                method: 'POST',
                 headers: {
-                    // Your API key is still needed to authorize with your private Space
                     'Authorization': `Bearer ${this.apiKey}`,
-                }
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    inputs: 'test',
+                }),
             });
 
-            if (response.ok) {
-                return { success: true, statusCode: response.status };
-            } else {
-                return { success: false, statusCode: response.status };
-            }
+            return {
+                success: response.ok,
+                statusCode: response.status,
+            };
         } catch (error) {
-            console.error('API connection test failed:', error);
-            return { success: false, error: error.message };
+            return {
+                success: false,
+                statusCode: 0, // Or some other indicator of a network error
+            };
         }
     }
 
     async chat(inputs) {
         try {
-            console.log('Preparing to send API request to your HF Space...');
-            // This will now send a POST request to your Space's "/" (generate) endpoint
-            const response = await fetch(this.baseUrl, {
+            console.log('Sending API request to Serverless Inference API...');
+            
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
+                    // Your API key is now used for authorization
                     'Authorization': `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                 },
@@ -48,6 +50,11 @@ class HuggingFaceAPI {
                     parameters: {
                         max_new_tokens: 1024,
                         return_full_text: false,
+                    },
+                    options: {
+                        // This tells the API to wait for the model to load
+                        // (this is what handles the "cold start")
+                        wait_for_model: true
                     }
                 })
             });
@@ -56,6 +63,7 @@ class HuggingFaceAPI {
                 const errorBody = await response.text();
                 // Check for the "model is loading" error
                 if (errorBody.includes("is currently loading")) {
+                    // This is a "cold start", tell the user to wait
                     throw new Error("Model is loading, please try again in a moment.");
                 }
                 throw new Error(`API request failed: ${response.statusText}. Body: ${errorBody}`);
@@ -63,7 +71,7 @@ class HuggingFaceAPI {
 
             const data = await response.json();
 
-            // The 'app.py' we wrote returns the data in the same format
+            // The data format is the same as before
             if (data && data[0] && data[0].generated_text) {
                 return data[0].generated_text;
             } else {
@@ -74,7 +82,8 @@ class HuggingFaceAPI {
             throw error;
         }
     }
-
+    
+    // This function can also be updated to use the new `chat` method
     async completeCode(context, prompt) {
         const inputs = `Context:\n${context}\n\nRequest: ${prompt}`;
         return this.chat(inputs);
