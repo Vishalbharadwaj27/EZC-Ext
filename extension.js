@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
 const { callEZCoderAPI } = require('./colabAPI');
 const HuggingFaceAPI = require('./huggingFaceAPI');
 // Instantiate HuggingFace API client if key is provided
@@ -8,7 +9,7 @@ const huggingFaceAPI = process.env.HF_API_KEY ? new HuggingFaceAPI(process.env.H
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 function activate(context) {
-    console.log('EZ-Coder extension is now active!');
+    console.log('ez-coder extension is now active!');
 
     const chatProvider = new ChatViewProvider(context.extensionUri, context);
     context.subscriptions.push(
@@ -84,7 +85,39 @@ class ChatViewProvider {
             switch (message.command) {
                 case 'sendMessage':
                     try {
-                        const apiResponse = await callEZCoderAPI(message.text);
+                        // Proxy the webview request to the configured FastAPI endpoint to avoid CORS.
+                        const apiBase = vscode.workspace.getConfiguration('ezcoder').get('apiBase');
+                        if (!apiBase) {
+                            this._view.webview.postMessage({
+                                command: 'addMessage',
+                                text: 'Error: ezcoder.apiBase is not configured. Set it in Settings.',
+                                isUser: false
+                            });
+                            break;
+                        }
+                        console.log("🔗 Sending to:", `${apiBase}/generate`);
+
+                        const res = await fetch(`${apiBase}/generate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                prompt: message.prompt || message.text,   // ✅ ensures the field exists
+                                max_new_tokens: 256,
+                                temperature: 0.7,
+                                top_p: 0.95
+                            }),
+                        });
+
+
+                        if (!res.ok) {
+                            const body = await res.text();
+                            throw new Error(`HTTP ${res.status}: ${body}`);
+                        }
+
+                        const data = await res.json();
+                        // Support several response shapes commonly used: { text: '...' } or HF style
+                        const apiResponse = (data && (data.text || data[0]?.generated_text || data.generated_text)) || JSON.stringify(data);
+
                         this._view.webview.postMessage({
                             command: 'addMessage',
                             text: apiResponse,
@@ -93,7 +126,7 @@ class ChatViewProvider {
                     } catch (error) {
                         this._view.webview.postMessage({
                             command: 'addMessage',
-                            text: 'Error: ' + error.message,
+                            text: 'Error: ' + String(error.message || error),
                             isUser: false
                         });
                     }

@@ -1,6 +1,6 @@
 {
   "name": "ez-coder",
-  "displayName": "EZ-Coder",
+  "displayName": "ez-coder",
   "description": "An all-in-one AI assistant for coding and learning",
   "version": "0.0.2",
   "engines": {
@@ -30,18 +30,18 @@
     "commands": [
       {
         "command": "ez-coder.completeCode",
-        "title": "EZ-Coder: Complete My Code"
+        "title": "ez-coder: Complete My Code"
       },
       {
         "command": "ez-coder.clearChat",
-        "title": "EZ-Coder: Clear Chat"
+        "title": "ez-coder: Clear Chat"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "ez-coder",
-          "title": "EZ-Coder",
+          "title": "ez-coder",
           "icon": "resources/ez-coder.svg"
         }
       ]
@@ -56,13 +56,19 @@
       ]
     },
     "configuration": {
-      "title": "EZ-Coder",
+      "title": "ez-coder",
       "properties": {
         "ez-coder.huggingFaceApiKey": {
           "type": "string",
           "default": "",
           "description": "Your personal Hugging Face API Key."
         }
+            ,
+            "ezcoder.apiBase": {
+              "type": "string",
+              "default": "",
+              "description": "Base URL for the EZC model API (e.g. https://8000-...colab.dev)"
+            }
       }
     }
   },
