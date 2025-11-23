@@ -1,7 +1,14 @@
 const fetch = require('node-fetch');
 
-// This is the new URL for the serverless API
-const API_URL = "https://api-inference.huggingface.co/models/VishalBharadwaj/EZCoder-merged";
+const fs = require('fs');
+let API_URL = "";
+
+try {
+    API_URL = fs.readFileSync(__dirname + "/colab_url.txt", "utf8").trim();
+} catch (e) {
+    console.log("No Colab URL found.");
+}
+
 
 class HuggingFaceAPI {
     constructor(apiKey) {

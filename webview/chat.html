@@ -1,21 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EZCoder Chat</title>
-    <link rel="stylesheet" href="{{cssPath}}">
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="{{cssPath}}" />
 </head>
+
 <body>
     <div class="chat-container">
         <div id="messages" class="messages"></div>
-        <div id="thinking" class="thinking" style="display: none;">Thinking...</div>
+
+        <div id="thinking" class="thinking" style="display:none;">Thinking...</div>
+
         <div class="input-container">
-            <textarea id="userInput" placeholder="Ask me anything..." rows="1"></textarea>
+            <textarea id="userInput" placeholder="Ask anything..." rows="1"></textarea>
+
             <div class="action-buttons">
-                <button id="explainButton" class="action-btn">Explain</button>
-                <button id="pseudocodeButton" class="action-btn">Pseudocode</button>
-                <button id="codeButton" class="action-btn">Code</button>
+                <button id="pseudocodeButton" class="action-btn">Generate Pseudocode</button>
+                <button id="codeButton" class="action-btn">Generate Code</button>
+
                 <button id="sendButton">Send</button>
                 <button id="clearButton">Clear Chat</button>
             </div>

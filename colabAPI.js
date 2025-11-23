@@ -1,22 +1,37 @@
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
+const vscode = require("vscode");
 
 async function callEZCoderAPI(promptText) {
-    const API_URL = "https://8000-gpu-t4-s-v1spi9044wf3-c.us-east1-2.prod.colab.dev/generate";
+    const config = vscode.workspace.getConfiguration("ezcoder");
+    let baseUrl = config.get("apiBase");
+
+    if (!baseUrl) return "Error: API Base URL is not set.";
+
+    // Ensure /generate endpoint
+    if (!baseUrl.endsWith("/generate")) {
+        baseUrl = baseUrl.replace(/\/$/, "") + "/generate";
+    }
 
     try {
-        const response = await fetch(API_URL, {
+        const res = await fetch(baseUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: promptText })
+            body: JSON.stringify({
+                prompt: promptText,
+               max_new_tokens: 256,
+                temperature: 0.7,
+                top_p: 0.9
+            })
         });
-        const data = await response.json();
-        return data.response;
-    } catch (error) {
-        console.error("Error calling EZCoder API:", error);
-        return "Error: Could not reach AI API.";
+
+        const data = await res.json();
+
+        if (data.text) return data.text;
+
+        return "Error: API returned no 'text' field.";
+    } catch (err) {
+        return "Error: Could not reach EZCoder API";
     }
 }
 
-module.exports = {
-    callEZCoderAPI
-};
+module.exports = { callEZCoderAPI };

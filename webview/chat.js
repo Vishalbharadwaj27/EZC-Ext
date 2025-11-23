@@ -1,456 +1,296 @@
 // @ts-nocheck
 /* global acquireVsCodeApi, document, window, navigator */
-// @ts-check
-/// <reference path="./globals.d.ts" />
 
-(function() {
-    // Get the vscode API
+(function () {
     const vscode = acquireVsCodeApi();
 
-    /**
-     * @typedef {Object} Message
-     * @property {string} [text]
-     * @property {boolean} isUser
-     * @property {string} type
-     * @property {string} [code]
-     * @property {string} [explanation]
-     * @property {string} [originalQuery]
-     */
-
-    /** @type {Message[]} */
     let messages = [];
-    let lastSelectedLanguage = '';
+    let lastSelectedLanguage = "";
+    let elements = {};
 
-    // Get the elements from the DOM
-    /** @type {HTMLElement | null} */
-    let messagesContainer = null;
-    /** @type {HTMLTextAreaElement | null} */
-    let userInput = null;
-    /** @type {HTMLButtonElement | null} */
-    let sendButton = null;
-    /** @type {HTMLButtonElement | null} */
-    let explainButton = null;
-    /** @type {HTMLButtonElement | null} */
-    let pseudocodeButton = null;
-    /** @type {HTMLButtonElement | null} */
-    let codeButton = null;
-    /** @type {HTMLButtonElement | null} */
-    let clearButton = null;
-    /** @type {HTMLElement | null} */
-    let thinking = null;
-    /** @type {HTMLTemplateElement | null} */
-    let langButtonsTemplate = null;
+    function init() {
+        queryElements();
+        restoreState();
+        registerEvents();
+        renderMessages();
+    }
 
-    /**
-     * Initializes the elements from the DOM and restores the previous state if it exists.
-     */
-    function initializeElements() {
-        messagesContainer = /** @type {HTMLElement} */ (document.getElementById('messages'));
-        userInput = /** @type {HTMLTextAreaElement} */ (document.getElementById('userInput'));
-        sendButton = /** @type {HTMLButtonElement} */ (document.getElementById('sendButton'));
-        explainButton = /** @type {HTMLButtonElement} */ (document.getElementById('explainButton'));
-        pseudocodeButton = /** @type {HTMLButtonElement} */ (document.getElementById('pseudocodeButton'));
-        codeButton = /** @type {HTMLButtonElement} */ (document.getElementById('codeButton'));
-        clearButton = /** @type {HTMLButtonElement} */ (document.getElementById('clearButton'));
-        thinking = /** @type {HTMLElement} */ (document.getElementById('thinking'));
-        langButtonsTemplate = /** @type {HTMLTemplateElement} */ (document.getElementById('lang-buttons-template'));
+    function queryElements() {
+        elements = {
+            messages: document.getElementById("messages"),
+            input: document.getElementById("userInput"),
+            send: document.getElementById("sendButton"),
+            pseudocode: document.getElementById("pseudocodeButton"),
+            code: document.getElementById("codeButton"),
+            clear: document.getElementById("clearButton"),
+            thinking: document.getElementById("thinking"),
+            langTemplate: document.getElementById("lang-buttons-template")
+        };
 
-        if (!messagesContainer || !userInput || !sendButton ||
-            !explainButton || !pseudocodeButton || !codeButton || !clearButton || !thinking || !langButtonsTemplate) {
-            throw new Error('Required elements not found in the document');
-        }
-
-        const previousState = vscode.getState();
-        if (previousState) {
-            messages = previousState.messages || [];
-            lastSelectedLanguage = previousState.lastSelectedLanguage || '';
-            renderMessages();
+        for (const k in elements) {
+            if (!elements[k]) throw new Error(`Missing DOM element: ${k}`);
         }
     }
 
-    /**
-     * Sets up the event listeners for the elements.
-     */
-    function setupEventListeners() {
-        if (!userInput || !sendButton || !explainButton || !pseudocodeButton || !codeButton || !clearButton || !messagesContainer) {
-            return;
-        }
-        sendButton.addEventListener('click', () => sendMessage());
+    function restoreState() {
+        const state = vscode.getState();
+        if (!state) return;
+        messages = state.messages || [];
+        lastSelectedLanguage = state.lastSelectedLanguage || "";
+    }
 
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+    function registerEvents() {
+        elements.send.addEventListener("click", sendUserMessage);
+
+        elements.input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                sendUserMessage();
             }
         });
 
-        explainButton.addEventListener('click', () => handleActionButton('explain'));
-        pseudocodeButton.addEventListener('click', () => handleActionButton('pseudocode'));
-        codeButton.addEventListener('click', () => handleActionButton('code'));
-        clearButton.addEventListener('click', () => clearMessages());
+        elements.pseudocode.addEventListener("click", () =>
+            handleAction("pseudocode")
+        );
 
-        messagesContainer.addEventListener('click', handleMessageClick);
-        window.addEventListener('message', handleExtensionMessage);
+        elements.code.addEventListener("click", () =>
+            handleAction("code")
+        );
+
+        elements.clear.addEventListener("click", clearMessages);
+        elements.messages.addEventListener("click", handleMessageClick);
+        window.addEventListener("message", handleExtensionMessage);
     }
 
-    /**
-     * Handles clicks on the messages container.
-     * @param {Event} event
-     */
-    function handleMessageClick(event) {
-        const target = /** @type {HTMLElement} */ (event.target);
-
-        if (target.id === 'verify-key-btn') {
-            vscode.postMessage({ command: 'runVerification' });
-            return;
-        }
-
-        if (target.classList.contains('lang-btn')) {
-            handleLanguageSelection(event);
-            return;
-        }
-
-        if (target.classList.contains('action-btn')) {
-            const action = target.getAttribute('data-action');
-            if (!action) return;
-
-            const messageDiv = /** @type {HTMLElement | null} */ (target.closest('.ai-message'));
-            if (!messageDiv) return;
-
-            handleMessageAction(action, messageDiv);
-            return;
-        }
-
-        if (target.classList.contains('copy-btn')) {
-            const pre = target.nextElementSibling;
-            if (pre && pre.tagName === 'PRE') {
-                const code = pre.querySelector('code');
-                if (code) {
-                    navigator.clipboard.writeText(code.innerText);
-                    target.textContent = 'Copied!';
-                    setTimeout(() => {
-                        target.textContent = 'Copy';
-                    }, 2000);
-                }
-            }
-        }
-    }
-
-    /**
-     * Handles actions on the messages.
-     * @param {string} action
-     * @param {HTMLElement} messageDiv
-     */
-    function handleMessageAction(action, messageDiv) {
-        const query = messageDiv.getAttribute('data-query');
-        if (!query) return;
-
-        if (action === 'code') {
-            const message = { type: 'lang-select', originalQuery: query, isUser: false };
-            messages.push(message);
-            renderMessages();
-        } else if (action === 'pseudocode') {
-            showThinking();
-            vscode.postMessage({
-                command: 'generatePseudocode',
-                concept: query
-            });
-        }
-    }
-
-    /**
-     * Handles the language selection.
-     * @param {Event} e
-     */
-    function handleLanguageSelection(e) {
-        const target = /** @type {HTMLElement} */ (e.target);
-        if (!target.classList.contains('lang-btn')) return;
-
-        const language = target.getAttribute('data-lang');
-        if (!language) return;
-
-        const messageDiv = target.closest('.ai-message');
-        if (!messageDiv) return;
-
-        const query = messageDiv.getAttribute('data-query');
-        if (!query) return;
-
-        lastSelectedLanguage = language;
-        vscode.setState({ messages, lastSelectedLanguage });
-
-        messages.pop();
-        showThinking();
-        vscode.postMessage({
-            command: 'generateCode',
-            concept: query,
-            language: language
-        });
-    }
-
-    /**
-     * Handles messages from the extension.
-     * @param {MessageEvent} event
-     */
-    function handleExtensionMessage(event) {
-        const message = event.data;
-        hideThinking();
-
-        switch (message.command) {
-            case 'addMessage':
-                addMessage(message.text, message.isUser);
-                break;
-            case 'updateLastMessage':
-                updateLastMessage(message.text);
-                break;
-            case 'addCode':
-                addCode(message.code);
-                break;
-            case 'addExplanation':
-                addExplanation(message.explanation, message.originalQuery, message.isUser);
-                break;
-            case 'clearChat':
-                clearMessages();
-                break;
-        }
-    }
-
-    /**
-     * Sends a message to the extension.
-     */
-    function sendMessage() {
-        if (!userInput) return;
-        const text = userInput.value.trim();
-        if (text) {
-            addMessage(text, true);
-            showThinking();
-            vscode.postMessage({
-                command: 'sendMessage',
-                text: text
-            });
-            userInput.value = '';
-        }
-    }
-
-    /**
-     * Handles the action buttons.
-     * @param {string} action
-     */
-    function handleActionButton(action) {
-        if (!userInput) return;
-        const text = userInput.value.trim();
+    function sendUserMessage() {
+        const text = elements.input.value.trim();
         if (!text) return;
 
         addMessage(text, true);
+        elements.input.value = "";
         showThinking();
-        vscode.postMessage({
-            command: 'sendMessage',
-            text: text,
-            action: action
-        });
-        userInput.value = '';
+
+        vscode.postMessage({ command: "sendMessage", text });
     }
 
-    /**
-     * Adds a message to the chat.
-     * @param {string} text
-     * @param {boolean} isUser
-     */
-    function addMessage(text, isUser) {
-        const message = { text, isUser, type: 'normal' };
-        messages.push(message);
-        vscode.setState({ messages, lastSelectedLanguage });
-        renderMessages();
-    }
+    function handleAction(action) {
+        const text = elements.input.value.trim();
+        if (!text) return;
 
-    /**
-     * Adds an explanation to the chat.
-     * @param {string} explanation
-     * @param {string} originalQuery
-     * @param {boolean} isUser
-     */
-    function addExplanation(explanation, originalQuery, isUser) {
-        const message = { explanation, originalQuery, isUser, type: 'explanation' };
-        messages.push(message);
-        vscode.setState({ messages, lastSelectedLanguage });
-        renderMessages();
-    }
+        addMessage(text, true);
+        elements.input.value = "";
 
-    /**
-     * Adds code to the chat.
-     * @param {string} code
-     * @param {boolean} isUser
-     */
-    function addCode(code, isUser = false) {
-        const message = { code, isUser, type: 'code' };
-        messages.push(message);
-        vscode.setState({ messages, lastSelectedLanguage });
-        renderMessages();
-    }
+        if (action === "pseudocode") {
+            showThinking();
+            vscode.postMessage({
+                command: "generatePseudocode",
+                concept: text
+            });
+        }
 
-    /**
-     * Updates the last message in the chat.
-     * @param {string} text
-     */
-    function updateLastMessage(text) {
-        if (messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.type === 'normal' && !lastMessage.isUser) {
-                lastMessage.text = text;
-            }
-            renderMessages();
+        if (action === "code") {
+            addLangSelectNode(text);
         }
     }
 
-    /**
-     * Renders the messages in the chat.
-     */
-    function renderMessages() {
-        if (!messagesContainer) return;
-        messagesContainer.innerHTML = '';
-        messages.forEach(msg => {
-            if (msg.type === 'explanation' && msg.explanation && msg.originalQuery) {
-                renderExplanationMessage(msg.explanation, msg.originalQuery);
-            } else if (msg.type === 'normal' && msg.text !== undefined) {
-                renderMessage(msg.text, msg.isUser);
-            } else if (msg.type === 'code' && msg.code) {
-                renderCodeMessage(msg.code, msg.isUser);
-            } else if (msg.type === 'lang-select' && msg.originalQuery) {
-                renderLangSelectMessage(msg.originalQuery);
-            }
+    function handleMessageClick(e) {
+        const t = e.target;
+
+        if (t.classList.contains("copy-btn")) return copyCode(t);
+
+        if (t.classList.contains("action-btn"))
+            return handleAIAction(t.dataset.action, t.closest(".ai-message"));
+
+        if (t.classList.contains("lang-btn"))
+            return handleLangSelect(t);
+    }
+
+    function copyCode(btn) {
+        const code = btn.nextElementSibling?.querySelector("code");
+        if (!code) return;
+        navigator.clipboard.writeText(code.innerText);
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = "Copy"), 1200);
+    }
+
+    function handleAIAction(action, div) {
+        const q = div.getAttribute("data-query");
+        if (!q) return;
+
+        if (action === "pseudocode") {
+            showThinking();
+            vscode.postMessage({
+                command: "generatePseudocode",
+                concept: q
+            });
+        }
+
+        if (action === "code") addLangSelectNode(q);
+    }
+
+    function addLangSelectNode(query) {
+        messages.push({ type: "lang-select", query });
+        saveState();
+        renderMessages();
+    }
+
+    function handleLangSelect(btn) {
+        const lang = btn.dataset.lang;
+        const wrapper = btn.closest(".ai-message");
+        const query = wrapper.getAttribute("data-query");
+
+        lastSelectedLanguage = lang;
+        messages.pop();
+
+        showThinking();
+        saveState();
+
+        vscode.postMessage({
+            command: "generateCode",
+            concept: query,
+            language: lang
         });
-        scrollToBottom();
     }
 
-    /**
-     * Renders a message in the chat.
-     * @param {string} text
-     * @param {boolean} isUser
-     */
-    function renderMessage(text, isUser) {
-        if (!messagesContainer) return;
-        const div = document.createElement('div');
-        div.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-        div.textContent = text;
-        messagesContainer.appendChild(div);
+    function handleExtensionMessage(event) {
+        const msg = event.data;
+        hideThinking();
+
+        if (msg.command === "addMessage")
+            return addMessage(msg.text, msg.isUser);
+
+        if (msg.command === "addExplanation")
+            return addExplanation(msg.explanation, msg.originalQuery);
+
+        if (msg.command === "addCode")
+            return addCode(msg.code);
+
+        if (msg.command === "clearChat")
+            return clearMessages();
     }
 
-    /**
-     * Renders a code message in the chat.
-     * @param {string} code
-     * @param {boolean} isUser
-     */
-    function renderCodeMessage(code, isUser) {
-        if (!messagesContainer) return;
-        const div = document.createElement('div');
-        div.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'copy-btn';
-        copyBtn.textContent = 'Copy';
-        div.appendChild(copyBtn);
-
-        const pre = document.createElement('pre');
-        const codeEl = document.createElement('code');
-        codeEl.textContent = code;
-        pre.appendChild(codeEl);
-        div.appendChild(pre);
-        messagesContainer.appendChild(div);
+    function addMessage(text, isUser) {
+        messages.push({ type: "text", text, isUser });
+        saveState();
+        renderMessages();
     }
 
-    /**
-     * Renders an explanation message in the chat.
-     * @param {string} explanation
-     * @param {string} originalQuery
-     */
-    function renderExplanationMessage(explanation, originalQuery) {
-        if (!messagesContainer) return;
-        const div = document.createElement('div');
-        div.className = 'message ai-message';
-        div.setAttribute('data-query', originalQuery);
-
-        const explanationDiv = document.createElement('div');
-        explanationDiv.className = 'explanation';
-        explanationDiv.textContent = explanation;
-        div.appendChild(explanationDiv);
-
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'explanation-actions';
-
-        const pseudocodeBtn = document.createElement('button');
-        pseudocodeBtn.className = 'action-btn';
-        pseudocodeBtn.setAttribute('data-action', 'pseudocode');
-        pseudocodeBtn.textContent = 'Generate Pseudocode';
-
-        const codeBtn = document.createElement('button');
-        codeBtn.className = 'action-btn';
-        codeBtn.setAttribute('data-action', 'code');
-        codeBtn.textContent = 'Generate Code';
-
-        actionsDiv.appendChild(pseudocodeBtn);
-        actionsDiv.appendChild(codeBtn);
-        div.appendChild(actionsDiv);
-
-        messagesContainer.appendChild(div);
+    function addExplanation(info, query) {
+        messages.push({ type: "explanation", query, text: info });
+        saveState();
+        renderMessages();
     }
 
-    /**
-     * Renders a language select message in the chat.
-     * @param {string} originalQuery
-     */
-    function renderLangSelectMessage(originalQuery) {
-        if (!messagesContainer || !langButtonsTemplate) return;
-        const div = document.createElement('div');
-        div.className = 'message ai-message';
-        div.setAttribute('data-query', originalQuery);
-
-        const langButtonsClone = langButtonsTemplate.content.cloneNode(true);
-        div.appendChild(langButtonsClone);
-
-        messagesContainer.appendChild(div);
+    function addCode(code) {
+        messages.push({ type: "code", code });
+        saveState();
+        renderMessages();
     }
 
-    /**
-     * Clears the messages in the chat.
-     */
     function clearMessages() {
         messages = [];
-        lastSelectedLanguage = '';
-        vscode.setState({ messages, lastSelectedLanguage });
+        lastSelLang = "";
+        saveState();
         renderMessages();
     }
 
-    /**
-     * Scrolls to the bottom of the chat.
-     */
-    function scrollToBottom() {
-        if (messagesContainer) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    function renderMessages() {
+        const root = elements.messages;
+        root.innerHTML = "";
+
+        for (const msg of messages) {
+            if (msg.type === "text") renderTextMessage(msg);
+            if (msg.type === "explanation") renderExplanation(msg);
+            if (msg.type === "code") renderCode(msg);
+            if (msg.type === "lang-select") renderLangSelect(msg);
         }
+
+        root.scrollTop = root.scrollHeight;
     }
 
-    /**
-     * Shows the thinking indicator.
-     */
+    function renderTextMessage(msg) {
+        const d = document.createElement("div");
+        d.className = `message ${msg.isUser ? "user-message" : "ai-message"}`;
+        d.textContent = msg.text;
+        elements.messages.appendChild(d);
+    }
+
+    function renderExplanation(msg) {
+        const d = document.createElement("div");
+        d.className = "message ai-message";
+        d.setAttribute("data-query", msg.query);
+
+        const t = document.createElement("div");
+        t.className = "explanation";
+        t.textContent = msg.text;
+
+        const actions = document.createElement("div");
+        actions.className = "explanation-actions";
+
+        const p = document.createElement("button");
+        p.className = "action-btn";
+        p.textContent = "Generate Pseudocode";
+        p.dataset.action = "pseudocode";
+
+        const c = document.createElement("button");
+        c.className = "action-btn";
+        c.textContent = "Generate Code";
+        c.dataset.action = "code";
+
+        actions.appendChild(p);
+        actions.appendChild(c);
+
+        d.appendChild(t);
+        d.appendChild(actions);
+
+        elements.messages.appendChild(d);
+    }
+
+    function renderCode(msg) {
+        const d = document.createElement("div");
+        d.className = "message ai-message";
+
+        const btn = document.createElement("button");
+        btn.className = "copy-btn";
+        btn.textContent = "Copy";
+
+        const pre = document.createElement("pre");
+        const code = document.createElement("code");
+        code.textContent = msg.code;
+
+        pre.appendChild(code);
+        d.appendChild(btn);
+        d.appendChild(pre);
+
+        elements.messages.appendChild(d);
+    }
+
+    function renderLangSelect(msg) {
+        const d = document.createElement("div");
+        d.className = "message ai-message";
+        d.setAttribute("data-query", msg.query);
+
+        const clone = elements.langTemplate.content.cloneNode(true);
+        d.appendChild(clone);
+
+        elements.messages.appendChild(d);
+    }
+
     function showThinking() {
-        if (thinking) {
-            thinking.style.display = 'block';
-            thinking.style.opacity = '1';
-        }
+        elements.thinking.style.display = "block";
+        elements.thinking.style.opacity = "1";
     }
 
-    /**
-     * Hides the thinking indicator.
-     */
     function hideThinking() {
-        if (thinking) {
-            thinking.style.opacity = '0';
-            setTimeout(() => {
-                thinking.style.display = 'none';
-            }, 500);
-        }
+        elements.thinking.style.opacity = "0";
+        setTimeout(() => {
+            elements.thinking.style.display = "none";
+        }, 200);
     }
 
-    // Initialize the script
-    initializeElements();
-    setupEventListeners();
+    function saveState() {
+        vscode.setState({ messages, lastSelectedLanguage });
+    }
+
+    init();
 })();

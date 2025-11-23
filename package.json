@@ -1,27 +1,14 @@
 {
   "name": "ez-coder",
   "displayName": "ez-coder",
-  "description": "An all-in-one AI assistant for coding and learning",
   "version": "0.0.2",
+  "description": "An all-in-one AI assistant for coding",
   "engines": {
     "vscode": "^1.103.0"
   },
-  "categories": [
-    "Programming Languages",
-    "Machine Learning",
-    "Education"
-  ],
-  "keywords": [
-    "AI",
-    "Assistant",
-    "Code Generation",
-    "Pseudocode",
-    "Chatbot",
-    "Hugging Face",
-    "VS Code"
-  ],
   "activationEvents": [
     "onView:ez-coder.chatView",
+    "onCommand:ez-coder.start",
     "onCommand:ez-coder.completeCode",
     "onCommand:ez-coder.clearChat"
   ],
@@ -29,19 +16,23 @@
   "contributes": {
     "commands": [
       {
+        "command": "ez-coder.start",
+        "title": "EZCoder: Open Chat"
+      },
+      {
         "command": "ez-coder.completeCode",
-        "title": "ez-coder: Complete My Code"
+        "title": "EZCoder: Complete My Code"
       },
       {
         "command": "ez-coder.clearChat",
-        "title": "ez-coder: Clear Chat"
+        "title": "EZCoder: Clear Chat"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "ez-coder",
-          "title": "ez-coder",
+          "title": "EZCoder",
           "icon": "resources/ez-coder.svg"
         }
       ]
@@ -56,37 +47,22 @@
       ]
     },
     "configuration": {
-      "title": "ez-coder",
+      "title": "EZCoder",
       "properties": {
-        "ez-coder.huggingFaceApiKey": {
+        "ezcoder.apiBase": {
           "type": "string",
           "default": "",
-          "description": "Your personal Hugging Face API Key."
+          "description": "Base URL for the Colab API"
         }
-            ,
-            "ezcoder.apiBase": {
-              "type": "string",
-              "default": "",
-              "description": "Base URL for the EZC model API (e.g. https://8000-...colab.dev)"
-            }
       }
     }
   },
-  "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint",
-    "test": "vscode-test"
+  "dependencies": {
+    "node-fetch": "^2.7.0",
+    "dotenv": "^17.2.2"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.103.0",
-    "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2",
-    "eslint": "^9.34.0"
-  },
-  "dependencies": {
-    "dotenv": "^17.2.2",
-    "node-fetch": "^2.7.0"
+    "@types/vscode": "^1.103.0"
   }
 }
