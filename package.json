@@ -1,8 +1,9 @@
 {
-  "name": "ez-coder",
-  "displayName": "ez-coder",
-  "version": "0.0.2",
-  "description": "An all-in-one AI assistant for coding",
+  "name": "ez-coder-unified",
+  "displayName": "EZCoder - Unified (Code + Roadmap)",
+  "version": "1.0.0",
+  "description": "An all-in-one AI assistant for coding with integrated roadmap generator",
+  "publisher": "unified",
   "engines": {
     "vscode": "^1.103.0"
   },
@@ -10,7 +11,10 @@
     "onView:ez-coder.chatView",
     "onCommand:ez-coder.start",
     "onCommand:ez-coder.completeCode",
-    "onCommand:ez-coder.clearChat"
+    "onCommand:ez-coder.clearChat",
+    "onCommand:unified.openRoadmap",
+    "onCommand:unified.openCodeViz",
+    "onCommand:unified.visualize"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -26,8 +30,31 @@
       {
         "command": "ez-coder.clearChat",
         "title": "EZCoder: Clear Chat"
+      },
+      {
+        "command": "unified.openRoadmap",
+        "title": "Open Roadmap Generator"
+      }
+      ,
+      {
+        "command": "unified.openCodeViz",
+        "title": "Open CodeViz"
+      }
+      ,
+      {
+        "command": "unified.visualize",
+        "title": "Visualize"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "unified.visualize",
+          "when": "true",
+          "group": ""
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -44,6 +71,12 @@
           "name": "AI Chat",
           "type": "webview"
         }
+        ,
+        {
+          "id": "unified.codevizView",
+          "name": "CodeViz",
+          "type": "webview"
+        }
       ]
     },
     "configuration": {
@@ -52,14 +85,20 @@
         "ezcoder.apiBase": {
           "type": "string",
           "default": "",
-          "description": "Base URL for the Colab API"
+          "description": "Base URL for the EZCoder API (e.g., http://localhost:5178/generate)"
         }
       }
     }
   },
   "dependencies": {
+    "dotenv": "^17.2.2",
     "node-fetch": "^2.7.0",
-    "dotenv": "^17.2.2"
+    "puppeteer-core": "^24.32.0",
+    "acorn": "^8.8.2"
+  },
+  "scripts": {
+    "check:roadmap-key": "node scripts/check-roadmap-key.js",
+    "clean-codeviz-media": "node scripts/clean-codeviz-media.js"
   },
   "devDependencies": {
     "@types/node": "22.x",

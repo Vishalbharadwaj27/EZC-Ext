@@ -1,0 +1,70 @@
+/* Reset body to be full screen with no scrolling */
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #ffffff;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header stays fixed at the top */
+header {
+    flex-shrink: 0;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 16px;
+    background: #f3f3f3;
+    border-bottom: 1px solid #e1e1e1;
+    z-index: 10;
+}
+
+h1 {
+    font-size: 14px;
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+}
+
+button {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 4px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 12px;
+}
+button:hover { background: #f0f0f0; }
+
+/* Main container takes remaining space */
+#app {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Hide scrollbars; we will pan via JS */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab; /* Cursor hints for panning */
+}
+
+#app:active {
+    cursor: grabbing;
+}
+
+/* Ensure SVG fits the container */
+svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.controls {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}

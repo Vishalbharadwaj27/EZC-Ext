@@ -7,6 +7,15 @@
 
 <body>
     <div class="chat-container">
+        <header id="ez-header" class="ez-header">
+            <div class="ez-left">
+                <button id="open-roadmap-btn" class="ez-btn ez-btn-primary" title="Open Roadmap Generator">
+                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 13h2v-2H3v2zm4 0h2v-2H7v2zm4 0h2v-2h-2v2zM3 17h2v-2H3v2zm4 0h2v-2H7v2zM3 9h2V7H3v2zM7 5h10v14H7zM19 7h2v2h-2z"/></svg>
+                    <span>Generate Roadmap</span>
+                </button>
+            </div>
+            <div class="ez-right">EZCODER: AI CHAT</div>
+        </header>
         <div id="messages" class="messages"></div>
 
         <div id="thinking" class="thinking" style="display:none;">Thinking...</div>
@@ -14,13 +23,12 @@
         <div class="input-container">
             <textarea id="userInput" placeholder="Ask anything..." rows="1"></textarea>
 
-            <div class="action-buttons">
-                <button id="pseudocodeButton" class="action-btn">Generate Pseudocode</button>
-                <button id="codeButton" class="action-btn">Generate Code</button>
-
-                <button id="sendButton">Send</button>
-                <button id="clearButton">Clear Chat</button>
-            </div>
+        <div class="action-buttons">
+            <button id="pseudocodeButton" class="action-btn">Generate Pseudocode</button>
+            <button id="codeButton" class="action-btn">Generate Code</button>
+            <button id="sendButton">Send</button>
+            <button id="clearButton">Clear Chat</button>
+        </div>
         </div>
     </div>
 

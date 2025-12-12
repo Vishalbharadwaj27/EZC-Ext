@@ -68,6 +68,42 @@ Users appreciate release notes as you update your extension.
 
   - Initial release of EZ-Coder.
 
+## Advanced Features
+
+### Resilient API Calls with Automatic Retry
+All AI model calls are now wrapped with exponential backoff retry logic. If the AI service is overloaded or temporary network issues occur, the extension will automatically retry up to 5 times with intelligent backoff timing. Retry attempts are logged to the extension host console for debugging.
+
+- **Automatic recovery** from "model is overloaded" errors
+- **Configurable retry limits** in `lib/retry.js`
+- **Console logging** of each retry attempt
+
+### CodeViz Media Cleanup
+The CodeViz visualization media folder can accumulate large files. To reduce disk usage:
+
+```bash
+# Dry-run mode (preview what will be cleaned)
+npm run clean-codeviz-media -- --dry-run
+
+# Actual cleanup (creates backup first)
+npm run clean-codeviz-media
+```
+
+This will:
+- Create a zip backup of the entire media folder
+- Remove unnecessary files (test files, documentation, source maps, etc.)
+- Move large binary files to a backup directory
+- Generate a detailed cleanup report in `backups/`
+- Preserve only essential files: `viz.js`, `viz.full.render.js`, `webview.js`, `webview.css`
+
+**Note**: A full backup is created before any cleanup, so you can safely restore files if needed.
+
+### Automatic Roadmap Server Startup
+When you launch the extension with `Ctrl+F5`, the roadmap server starts automatically in the background. No need to manually run `node index.js`.
+
+- Server logs are printed to the VS Code debug console
+- If the server crashes, it's logged but won't crash the extension
+- Server is cleanly shut down when the extension stops
+
 -----
 
 ## Working with Markdown

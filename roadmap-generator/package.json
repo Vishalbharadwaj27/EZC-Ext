@@ -1,0 +1,26 @@
+{
+  "name": "roadmap-generator",
+  "displayName": "Roadmap Generator",
+  "publisher": "thelurkinglegend",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:roadmap-generator.open"],
+  "main": "./extension.js",
+  "contributes": {
+  "commands": [
+    {
+      "command": "roadmap-generator.open",
+      "title": "Roadmap Generator: Open"
+    }
+  ]
+},
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0"
+  }
+}

@@ -2,7 +2,8 @@
 /* global acquireVsCodeApi, document, window, navigator */
 
 (function () {
-    const vscode = acquireVsCodeApi();
+    // Graceful acquire of VS Code API for webview. If not available (standalone/dev), vscode will be null.
+    const vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
 
     let messages = [];
     let lastSelectedLanguage = "";
@@ -27,12 +28,16 @@
             langTemplate: document.getElementById("lang-buttons-template")
         };
 
-        for (const k in elements) {
+        // Only require core UI elements — roadmap button moved to header and wired separately.
+        const required = ['messages','input','send','pseudocode','code','clear','thinking','langTemplate'];
+        for (const k of required) {
             if (!elements[k]) throw new Error(`Missing DOM element: ${k}`);
         }
     }
 
     function restoreState() {
+        // Guard when vscode API is not available (dev preview or standalone)
+        if (!vscode || typeof vscode.getState !== 'function') return;
         const state = vscode.getState();
         if (!state) return;
         messages = state.messages || [];
@@ -57,9 +62,54 @@
             handleAction("code")
         );
 
+        // Wire the new top-left Roadmap button. If VS Code API is not available, toggle an iframe overlay.
+        const openRoadmapBtn = document.getElementById('open-roadmap-btn');
+        if (openRoadmapBtn) {
+            openRoadmapBtn.addEventListener('click', () => {
+                const msg = { command: 'open.roadmap' };
+                // If VS Code API is available, post a dual message: open.roadmap and an executeCommand request.
+                if (vscode) {
+                    try {
+                        vscode.postMessage(msg);
+                        // Also request the host to execute the registered command 'unified.openRoadmap' as a fallback
+                        vscode.postMessage({ command: 'executeCommand', commandToRun: 'unified.openRoadmap' });
+                    } catch (e) {
+                        // if posting fails, fallback to overlay
+                        toggleRoadmapOverlay();
+                    }
+                } else {
+                    // Fallback: toggle embedded iframe overlay and broadcast message
+                    toggleRoadmapOverlay();
+                    window.postMessage(msg, '*');
+                }
+            });
+        }
+
         elements.clear.addEventListener("click", clearMessages);
         elements.messages.addEventListener("click", handleMessageClick);
         window.addEventListener("message", handleExtensionMessage);
+    }
+
+    // Create a small iframe overlay for local preview when VS Code API isn't available.
+    function toggleRoadmapOverlay(){
+        const existing = document.querySelector('.rg-iframe-overlay');
+        if(existing){ existing.remove(); return; }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'rg-iframe-overlay';
+        overlay.style.left = '32px'; overlay.style.top = '32px'; overlay.style.right = '32px'; overlay.style.bottom = '32px';
+
+        const close = document.createElement('button');
+        close.className = 'rg-iframe-close';
+        close.textContent = 'Close';
+        close.addEventListener('click', ()=> overlay.remove());
+
+        const iframe = document.createElement('iframe');
+        // Try to load the roadmap generator URL relative to extension files. May work in dev preview.
+        iframe.src = './roadmap-generator/webview/index.html';
+        overlay.appendChild(close);
+        overlay.appendChild(iframe);
+        document.body.appendChild(overlay);
     }
 
     function sendUserMessage() {
@@ -70,7 +120,9 @@
         elements.input.value = "";
         showThinking();
 
-        vscode.postMessage({ command: "sendMessage", text });
+        const msg = { command: "sendMessage", text };
+        if (vscode) vscode.postMessage(msg);
+        else window.postMessage(msg, '*');
     }
 
     function handleAction(action) {
@@ -82,10 +134,8 @@
 
         if (action === "pseudocode") {
             showThinking();
-            vscode.postMessage({
-                command: "generatePseudocode",
-                concept: text
-            });
+            const msg = { command: "generatePseudocode", concept: text };
+            if (vscode) vscode.postMessage(msg); else window.postMessage(msg, '*');
         }
 
         if (action === "code") {
@@ -119,10 +169,8 @@
 
         if (action === "pseudocode") {
             showThinking();
-            vscode.postMessage({
-                command: "generatePseudocode",
-                concept: q
-            });
+                const msg = { command: "generatePseudocode", concept: q };
+                if (vscode) vscode.postMessage(msg); else window.postMessage(msg, '*');
         }
 
         if (action === "code") addLangSelectNode(q);
@@ -144,12 +192,8 @@
 
         showThinking();
         saveState();
-
-        vscode.postMessage({
-            command: "generateCode",
-            concept: query,
-            language: lang
-        });
+        const msg = { command: "generateCode", concept: query, language: lang };
+        if (vscode) vscode.postMessage(msg); else window.postMessage(msg, '*');
     }
 
     function handleExtensionMessage(event) {
@@ -167,6 +211,12 @@
 
         if (msg.command === "clearChat")
             return clearMessages();
+        // Support opening the roadmap view if host asks
+        if (msg.command === 'open.roadmap'){
+            // If host sent this to the chat webview, open overlay fallback
+            if (typeof acquireVsCodeApi !== 'function') toggleRoadmapOverlay();
+            return;
+        }
     }
 
     function addMessage(text, isUser) {
@@ -289,6 +339,7 @@
     }
 
     function saveState() {
+        if (!vscode || typeof vscode.setState !== 'function') return;
         vscode.setState({ messages, lastSelectedLanguage });
     }
 
