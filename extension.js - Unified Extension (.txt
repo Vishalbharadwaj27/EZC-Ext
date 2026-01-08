@@ -10,6 +10,43 @@ const puppeteer = require("puppeteer-core");
 const acorn = require("acorn");
 const { spawn } = require("child_process");
 
+// ===============================
+// EZ-CODER SYSTEM PROMPT
+// ===============================
+const SYSTEM_PROMPT = `
+You are EZ-Coder, a professional programming mentor.
+
+STRICT RULES:
+- Explain concepts in simple, clear language.
+- Always think step-by-step before answering.
+- Use bullet points where possible.
+- When writing code:
+  - Follow best practices
+  - Use meaningful variable names
+  - Keep the code simple and readable
+- Mention time and space complexity when relevant.
+- Do NOT hallucinate facts.
+- If you are unsure, clearly say you are unsure.
+
+ANSWER FORMAT (ALWAYS FOLLOW):
+1. Short explanation
+2. Step-by-step breakdown
+3. Code (if applicable)
+4. Time Complexity
+5. Space Complexity
+`;
+function buildPrompt(userInput: string): string {
+    return `
+${SYSTEM_PROMPT}
+
+Question:
+${userInput}
+
+Answer:
+`;
+}
+
+
 const WEBVIEW_FOLDER = "webview";
 
 // Keep a reference to the active CodeViz panel
@@ -21,134 +58,6 @@ let globalCodeVizMessageQueue = [];
 
 // Roadmap server process
 let globalRoadmapServer = null;
-
-function stripPromptLeakage(text) {
-    const forbidden = [
-        "You are EZ-Coder",
-        "INTERNAL INSTRUCTIONS",
-        "YOU MUST FOLLOW",
-        "TASK:",
-        "Required sections",
-        "Rewrite the full answer",
-        "User Request:",
-        "Assistant:"
-    ];
-
-    let cleaned = text;
-    forbidden.forEach(f => {
-        if (cleaned.includes(f)) {
-            cleaned = cleaned.split(f).pop();
-        }
-    });
-
-    // Additionally, remove the system prompt if it appears at the beginning
-    const systemPromptStart = "You are EZ-Coder, a strict code-focused AI assistant.";
-    if (cleaned.startsWith(systemPromptStart)) {
-        cleaned = cleaned.substring(systemPromptStart.length).trim();
-    }
-
-    // If the response includes the prompt structure, extract only the answer part
-    const answerIndex = cleaned.indexOf("Answer:");
-    if (answerIndex !== -1) {
-        cleaned = cleaned.substring(answerIndex + "Answer:".length).trim();
-    }
-
-    return cleaned.trim();
-}
-
-
-function extractPureCode(text) {
-    // Remove markdown fences
-    let cleaned = text.replace(/```[\s\S]*?```/g, match =>
-        match.replace(/```[a-z]*\n?/i, "").replace(/```/, "")
-    );
-
-    // Remove common unwanted lines
-    const bannedPatterns = [
-        /write short but complete/i,
-        /created on/i,
-        /@author/i,
-        /example/i,
-        /output/i,
-        /doctest/i,
-        /__main__/i,
-        /import functools/i,
-        /lru_cache/i
-    ];
-
-    cleaned = cleaned
-        .split("\n")
-        .filter(line =>
-            !bannedPatterns.some(pattern => pattern.test(line))
-        )
-        .join("\n");
-
-    return cleaned.trim();
-}
-
-
-function buildPrompt(userInput) {
-    const isCodeRequest = /write|implement|code|function|program/i.test(userInput);
-
-    if (isCodeRequest) {
-        return `
-You are EZ-Coder, a strict code-focused AI assistant.
-
-GLOBAL RULES (MUST FOLLOW ALWAYS):
-1. NEVER repeat or echo user instructions, prompts, or meta text.
-2. NEVER include phrases like:
-   - "Write short but COMPLETE..."
-   - "Explain the following concept..."
-   - "Do not change the name of this function..."
-3. NEVER explain what you are about to do.
-4. NEVER include example templates or instructional boilerplate.
-5. Output ONLY the final requested content.
-
-CODE GENERATION RULES:
-- Return ONLY valid code.
-- No comments unless explicitly requested.
-- No explanations outside code blocks.
-- Code must be complete and runnable.
-- Do NOT include usage examples unless asked.
-
-PSEUDOCODE RULES:
-- Use standard textbook pseudocode format.
-- Use clear steps, indentation, and keywords.
-- Do NOT mix programming languages.
-- No Python / JavaScript syntax.
-- No prose paragraphs.
-
-EXPLANATION RULES:
-- Use short paragraphs.
-- Use bullet points where appropriate.
-- Avoid long continuous text.
-- Be precise and concise.
-- Focus only on the core concept.
-
-STYLE RULES:
-- Be direct.
-- Be structured.
-- Be minimal.
-- Be accurate.
-
-If the request is ambiguous, assume the simplest correct interpretation.
-
-
-Task:
-${userInput}
-`;
-    }
-
-    // Explanation mode
-    return `
-${ANTIGRAVITY_SYSTEM_PROMPT}
-
-Question:
-${userInput}
-
-Answer:
-`;
-}
 
 // Robust sender that posts to the active CodeViz webview and retries on failure
 function sendMessageToCodeViz(msg) {
@@ -306,6 +215,37 @@ function getNonce() {
 
 // --- RETRY-WRAPPED API CALL ---
 async function callEZCoderAPIWithRetry(prompt) {
+    // ===============================
+    // HIGH QUALITY ANSWER PIPELINE
+    // ===============================
+    async function getHighQualityAnswer(userInput) {
+        // 1️⃣ First pass (structured answer)
+        const firstPrompt = buildPrompt(userInput);
+        const firstAnswer = await callEZCoderAPIWithRetry(firstPrompt);
+
+        // 2️⃣ Self-refinement pass
+        const refinePrompt = `
+Review the answer below.
+If it is unclear, incorrect, incomplete, or poorly structured,
+rewrite it to be clear, correct, and well formatted.
+Strictly follow the required answer format.
+
+Answer:
+${firstAnswer}
+
+Improved version:
+`;
+
+        const refinedAnswer = await callEZCoderAPIWithRetry(refinePrompt);
+
+        // Safety fallback
+        if (!refinedAnswer || refinedAnswer.length < 80) {
+            return firstAnswer;
+        }
+
+        return refinedAnswer;
+    }
+
     return retryAsync(
         () => callEZCoderAPI(prompt),
         {
@@ -345,57 +285,7 @@ async function callEZCoderAPIWithRetry(prompt) {
     });
 }
 
-// --- STRUCTURE ENFORCEMENT ---
-function hasRequiredStructure(answer) {
-    const requiredSections = [
-        "=== Short Explanation ===",
-        "=== Step-by-Step Breakdown ===",
-        "=== Code ===",
-        "=== Time Complexity ===",
-        "=== Space Complexity ==="
-    ];
-
-    return requiredSections.every(section =>
-        answer.includes(section)
-    );
-}
-
-async function getEnforcedAnswer(userText) {
-    // Determine intent for validation logic
-    const isCodeRequest = /write|implement|code|function|program/i.test(userText);
-    const fullPrompt = buildPrompt(userText);
-
-    let answer = await callEZCoderAPIWithRetry(fullPrompt);
-
-    // Only enforce structure for explanation requests
-    if (!isCodeRequest && !hasRequiredStructure(answer)) {
-        console.log('[EZCoder] Response missing required structure. Retrying with enforcement...');
-        const retryPrompt = `The following answer may be incomplete or poorly structured.
-
-TASK (INTERNAL – DO NOT REPEAT):
-- Ensure all required sections are present.
-- Fix formatting and clarity.
-- Do NOT include system instructions, rules, or task descriptions in the output.
-- Output ONLY the final answer.
-
-Required sections:
-- Short Explanation
-- Step-by-Step Breakdown
-- Code
-- Time Complexity
-- Space Complexity
-
-Answer to improve:
-${answer}
-
-Final corrected answer:`;
-        answer = await callEZCoderAPIWithRetry(retryPrompt);
-    }
-
-    return answer;
-}
-
-// --- EZCODER CHAT PROVIDER ---
+// --- AI CHATBOT PROVIDER ---
 class EZCoderProvider {
     constructor(context) {
         this.context = context;
@@ -453,43 +343,40 @@ class EZCoderProvider {
                 }
                 if (msg.command === "sendMessage") {
                     this.lastUserPrompt = msg.text;
-                    // Use getEnforcedAnswer which wraps callEZCoderAPIWithRetry and enforces structure
-                    // Use getEnforcedAnswer which wraps callEZCoderAPIWithRetry and enforces structure
-                    const response = await getEnforcedAnswer(msg.text);
+
+                    const response = await getHighQualityAnswer(msg.text);
+
                     this.lastModelResponse = response;
 
-                    let finalAnswer = response;
-                    // Apply strict Prompt Leakage filter first (always good)
-                    finalAnswer = stripPromptLeakage(finalAnswer);
+                    safePost(webview, {
+                        command: "addExplanation",
+                        explanation: response,
+                        originalQuery: msg.text
+                    });
+                    return;
+                }
 
-                    // If it is a code request, apply extractPureCode
-                    if (/write|implement|code|function|program/i.test(msg.text)) {
-                        finalAnswer = extractPureCode(response);
-                    }
-
-                    safePost(webview, { command: "addExplanation", explanation: finalAnswer, originalQuery: msg.text });
-                    return;
-                }
-                if (msg.command === "generatePseudocode") {
-                    const prompt = `Write short but COMPLETE pseudocode for: ${msg.concept}`;
-                    const response = await callEZCoderAPIWithRetry(prompt);
-                    safePost(webview, { command: "addCode", code: response });
-                    return;
-                }
-                if (msg.command === "generateCode") {
-                    const prompt = `Write short but COMPLETE ${msg.language} code for: ${msg.concept}`;
-                    const response = await callEZCoderAPIWithRetry(prompt);
-                    safePost(webview, { command: "addCode", code: response });
-                    return;
-                }
-                if (msg.command === "clearChat") {
-                    safePost(webview, { command: "clearChat" });
-                }
-            } catch (err) {
-                safePost(webview, { command: "addExplanation", explanation: "Error: " + err.message, originalQuery: "" });
             }
-        });
-    }
+                if (msg.command === "generatePseudocode") {
+                const prompt = `Write short but COMPLETE pseudocode for: ${msg.concept}`;
+                const response = await callEZCoderAPIWithRetry(prompt);
+                safePost(webview, { command: "addCode", code: response });
+                return;
+            }
+            if (msg.command === "generateCode") {
+                const prompt = `Write short but COMPLETE ${msg.language} code for: ${msg.concept}`;
+                const response = await callEZCoderAPIWithRetry(prompt);
+                safePost(webview, { command: "addCode", code: response });
+                return;
+            }
+            if (msg.command === "clearChat") {
+                safePost(webview, { command: "clearChat" });
+            }
+        } catch (err) {
+            safePost(webview, { command: "addExplanation", explanation: "Error: " + err.message, originalQuery: "" });
+        }
+    });
+}
 }
 
 // --- ROADMAP GENERATOR ---
